@@ -149,5 +149,7 @@ public static class DatabaseInitializer
         db.AddRange(sales);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        Console.WriteLine($"Seed completed: {managerEntities.Count} managers, {customers.Count} customers, {categories.Count} categories, {products.Count} products, {sales.Count} sales.");
     }
 }
