@@ -1,4 +1,3 @@
-using DJIMarket.Application;
 using DJIMarket.Infrastructure;
 using DJIMarket.Infrastructure.Data;
 
@@ -7,7 +6,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));

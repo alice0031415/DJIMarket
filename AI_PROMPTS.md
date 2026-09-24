@@ -18,3 +18,7 @@
 ## 21:12 — ChatGPT / GPT-5.6 Luna
 Доведи проект до сдаваемого состояния: проверь структуру, Docker-конфигурацию, TypeScript импорты/типы, README, тесты и git history; не добавляй сложную архитектуру без необходимости.
 
+
+
+## 20:36 — ChatGPT / GPT-5.6 Luna — debugging pass
+Проверить ошибку Docker publish: `Microsoft.Extensions.DependencyInjection` не найден в DJIMarket.Application/DependencyInjection.cs; найти причину и исправить проект так, чтобы backend собирался без лишней зависимости. Заодно проверить очевидные нарушения требования server-side analytics.

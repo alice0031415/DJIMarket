@@ -15,3 +15,6 @@
 - В текущем окружении отсутствуют dotnet SDK и Docker, поэтому полный runtime smoke test здесь недоступен.
 - Frontend должен показывать loading, API error и empty period вместо пустого белого экрана.
 - Дальше production-улучшения: E2E, pre-aggregation, observability, secret management.
+
+- После первого Docker-запуска обнаружена compile-time ошибка: Application содержал пустой extension `AddApplication`, но проект не ссылался на `Microsoft.Extensions.DependencyInjection`. Вместо добавления лишней зависимости no-op слой DI удалён, так как Application пока не регистрирует собственные сервисы.
+- Category/Product analytics дополнительно переведены на SQL-side GROUP BY, чтобы агрегирование не выполнялось в памяти приложения.

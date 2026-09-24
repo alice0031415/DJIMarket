@@ -128,19 +128,46 @@ public sealed class AnalyticsService(AppDbContext db) : IAnalyticsService
 
     private async Task<IReadOnlyList<CategoryMetricDto>> QueryCategoriesAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
-        var rows = await db.Sales.AsNoTracking().Where(s => s.Status == SaleStatus.Paid && s.SoldAt >= Start(from) && s.SoldAt < Start(to))
-            .SelectMany(s => s.Items.Select(i => new { Category = i.Product.Category.Name, i.SalePrice, i.CostPrice, i.Quantity }))
+        var rows = await db.Sales.AsNoTracking()
+            .Where(s => s.Status == SaleStatus.Paid && s.SoldAt >= Start(from) && s.SoldAt < Start(to))
+            .SelectMany(s => s.Items)
+            .GroupBy(i => i.Product.Category.Name)
+            .Select(g => new
+            {
+                Category = g.Key,
+                Revenue = g.Sum(i => i.SalePrice * i.Quantity),
+                GrossProfit = g.Sum(i => (i.SalePrice - i.CostPrice) * i.Quantity)
+            })
+            .OrderByDescending(x => x.Revenue)
             .ToListAsync(ct);
-        var total = rows.Sum(x => x.SalePrice * x.Quantity);
-        return rows.GroupBy(x => x.Category).Select(g => new CategoryMetricDto(g.Key, g.Sum(x => x.SalePrice * x.Quantity), g.Sum(x => (x.SalePrice - x.CostPrice) * x.Quantity), total == 0 ? 0 : g.Sum(x => x.SalePrice * x.Quantity) / total)).OrderByDescending(x => x.Revenue).ToList();
+
+        var totalRevenue = rows.Sum(x => x.Revenue);
+        return rows
+            .Select(x => new CategoryMetricDto(
+                x.Category,
+                x.Revenue,
+                x.GrossProfit,
+                totalRevenue == 0 ? 0 : x.Revenue / totalRevenue))
+            .ToList();
     }
 
     private async Task<IReadOnlyList<ProductMetricDto>> QueryProductsAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
-        var rows = await db.Sales.AsNoTracking().Where(s => s.Status == SaleStatus.Paid && s.SoldAt >= Start(from) && s.SoldAt < Start(to))
-            .SelectMany(s => s.Items.Select(i => new { Product = i.Product.Name, Category = i.Product.Category.Name, i.SalePrice, i.CostPrice, i.Quantity }))
+        var rows = await db.Sales.AsNoTracking()
+            .Where(s => s.Status == SaleStatus.Paid && s.SoldAt >= Start(from) && s.SoldAt < Start(to))
+            .SelectMany(s => s.Items)
+            .GroupBy(i => new { Product = i.Product.Name, Category = i.Product.Category.Name })
+            .Select(g => new ProductMetricDto(
+                g.Key.Product,
+                g.Key.Category,
+                g.Sum(i => i.Quantity),
+                g.Sum(i => i.SalePrice * i.Quantity),
+                g.Sum(i => (i.SalePrice - i.CostPrice) * i.Quantity)))
+            .OrderByDescending(x => x.GrossProfit)
+            .Take(5)
             .ToListAsync(ct);
-        return rows.GroupBy(x => new { x.Product, x.Category }).Select(g => new ProductMetricDto(g.Key.Product, g.Key.Category, g.Sum(x => x.Quantity), g.Sum(x => x.SalePrice * x.Quantity), g.Sum(x => (x.SalePrice - x.CostPrice) * x.Quantity))).OrderByDescending(x => x.GrossProfit).Take(5).ToList();
+
+        return rows;
     }
 
     private async Task<IReadOnlyList<RecentSaleDto>> QueryRecentSalesAsync(DateOnly from, DateOnly to, CancellationToken ct)
