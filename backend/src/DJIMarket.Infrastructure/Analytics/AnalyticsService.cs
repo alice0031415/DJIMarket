@@ -7,8 +7,6 @@ namespace DJIMarket.Infrastructure.Analytics;
 
 public sealed class AnalyticsService(AppDbContext db) : IAnalyticsService
 {
-    private static bool IsIncluded(SaleStatus status) => status == SaleStatus.Paid;
-
     public async Task<DashboardResponse> GetDashboardAsync(DashboardQuery query, CancellationToken cancellationToken)
     {
         if (query.From >= query.To) throw new ArgumentException("From must be before To.");

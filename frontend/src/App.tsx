@@ -44,7 +44,6 @@ export default function App() {
 
   const data = query.data;
   const revenueSeries = data?.trend.map(x => ({ ...x, label: dayjs(x.date).format('DD.MM') })) ?? [];
-  const categoryMax = Math.max(...(data?.categories.map(x => x.revenue) ?? [1]));
 
   const rankingColumns: ColumnsType<NonNullable<typeof data>['managerRanking'][number]> = [
     { title: '#', dataIndex: 'rank', width: 48, render: (v) => <span className="rankNo">{v}</span> },
