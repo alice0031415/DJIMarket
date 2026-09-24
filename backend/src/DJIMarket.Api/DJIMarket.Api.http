@@ -1,0 +1,4 @@
+@DJIMarket.Api_HostAddress = http://localhost:8080
+
+GET {{DJIMarket.Api_HostAddress}}/api/health
+Accept: application/json
