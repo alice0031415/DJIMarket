@@ -172,19 +172,26 @@ public sealed class AnalyticsService(AppDbContext db) : IAnalyticsService
 
     private async Task<IReadOnlyList<ProductMetricDto>> QueryProductsAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
-        return await db.SaleItems.AsNoTracking()
+        // Project to an anonymous SQL-translatable shape first. EF Core/Npgsql
+        // can struggle to translate constructor calls inside GroupBy projections.
+        var rows = await db.SaleItems.AsNoTracking()
             .Where(i => i.Sale.Status == SaleStatus.Paid &&
                         i.Sale.SoldAt >= Start(from) && i.Sale.SoldAt < Start(to))
             .GroupBy(i => new { Product = i.Product.Name, Category = i.Product.Category.Name })
-            .Select(g => new ProductMetricDto(
-                g.Key.Product,
-                g.Key.Category,
-                g.Sum(i => i.Quantity),
-                g.Sum(i => i.SalePrice * i.Quantity),
-                g.Sum(i => (i.SalePrice - i.CostPrice) * i.Quantity)))
+            .Select(g => new
+            {
+                Product = g.Key.Product,
+                Category = g.Key.Category,
+                Units = g.Sum(i => i.Quantity),
+                Revenue = g.Sum(i => i.SalePrice * i.Quantity),
+                GrossProfit = g.Sum(i => (i.SalePrice - i.CostPrice) * i.Quantity)
+            })
             .OrderByDescending(x => x.GrossProfit)
             .Take(5)
             .ToListAsync(ct);
+
+        return rows.Select(x => new ProductMetricDto(
+            x.Product, x.Category, x.Units, x.Revenue, x.GrossProfit)).ToList();
     }
 
     private async Task<IReadOnlyList<RecentSaleDto>> QueryRecentSalesAsync(DateOnly from, DateOnly to, CancellationToken ct)
