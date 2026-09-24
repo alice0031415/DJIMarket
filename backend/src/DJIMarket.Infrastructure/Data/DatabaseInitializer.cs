@@ -8,8 +8,29 @@ public static class DatabaseInitializer
     public static async Task InitializeAsync(AppDbContext db, CancellationToken cancellationToken = default)
     {
         await db.Database.MigrateAsync(cancellationToken);
-        if (await db.Managers.AnyAsync(cancellationToken))
+
+        // Sales are the completion marker for the seed. The previous implementation
+        // saved reference data first and could leave a partially seeded database
+        // (managers without sales) after an interrupted startup.
+        if (await db.Sales.AnyAsync(cancellationToken))
             return;
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // Recover cleanly from a partial seed created by an earlier version.
+        if (await db.Managers.AnyAsync(cancellationToken) ||
+            await db.Customers.AnyAsync(cancellationToken) ||
+            await db.Products.AnyAsync(cancellationToken) ||
+            await db.Categories.AnyAsync(cancellationToken))
+        {
+            db.SaleItems.RemoveRange(db.SaleItems);
+            db.Sales.RemoveRange(db.Sales);
+            db.Products.RemoveRange(db.Products);
+            db.Categories.RemoveRange(db.Categories);
+            db.Customers.RemoveRange(db.Customers);
+            db.Managers.RemoveRange(db.Managers);
+            await db.SaveChangesAsync(cancellationToken);
+        }
 
         var random = new Random(20260924);
         var managers = new[]
@@ -68,7 +89,6 @@ public static class DatabaseInitializer
         db.AddRange(categories);
         db.AddRange(products);
         db.AddRange(customers);
-        await db.SaveChangesAsync(cancellationToken);
 
         var referenceStart = new DateOnly(2026, 1, 1);
         var referenceEnd = new DateOnly(2026, 9, 24);
@@ -128,5 +148,6 @@ public static class DatabaseInitializer
 
         db.AddRange(sales);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 }
